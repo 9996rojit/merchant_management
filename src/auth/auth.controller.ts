@@ -3,6 +3,7 @@ import { LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
 import { ApiBadRequestResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ResponseMessage } from '../common/decorators/response-message.decorator';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 
 @Controller('auth')
@@ -31,6 +32,20 @@ export class AuthController {
   })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Get a new access token without rotating the refresh token' })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        message: 'Access token refreshed successfully.',
+        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.access.signature',
+      },
+    },
+  })
+  refreshToken(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto.refreshToken);
   }
 
 }

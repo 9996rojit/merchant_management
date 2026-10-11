@@ -42,7 +42,7 @@ export class UserService {
       .where('user.id = :id', { id })
       .getOne();
     if (!user) {
-      throw new NotFoundException('user.not_found');
+      throw new NotFoundException('User not found.');
     }
     return this.toResponse(user);
   }
@@ -50,7 +50,7 @@ export class UserService {
   async update(id: string, dto: UpdateUserDto): Promise<UserResponse> {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) {
-      throw new NotFoundException('user.not_found');
+      throw new NotFoundException('User not found.');
     }
 
     const { password, ...userChanges } = dto;
@@ -66,7 +66,7 @@ export class UserService {
   async remove(id: string): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) {
-      throw new NotFoundException('user.not_found');
+      throw new NotFoundException('User not found.');
     }
     await this.userRepo.softRemove(user);
   }

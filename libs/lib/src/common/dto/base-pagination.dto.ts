@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 import { IsInt, Max, Min } from 'class-validator';
 
 export class BasePaginationDto {
-    @ApiPropertyOptional({ type: Number, minimum: 1, default: 1, example: 2 })
+    @ApiPropertyOptional({ type: Number, minimum: 1, default: 1, example: 1 })
     @Type(() => Number)
     @IsInt()
     @Min(1)

@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -10,10 +10,11 @@ import { AuthToken } from './entities/auth-token.entity';
 
 describe('AuthService', () => {
   let service: AuthService;
-  const userService = { getUserSpecificField: jest.fn() };
-  const jwtService = { signAsync: jest.fn() };
+  const userService = { getUserSpecificField: jest.fn(), findOne: jest.fn() };
+  const jwtService = { signAsync: jest.fn(), verifyAsync: jest.fn() };
   const authTokenRepository = {
     create: jest.fn((token) => token),
+    findOne: jest.fn(),
     save: jest.fn(),
   };
   const configValues: Record<string, string> = {
@@ -30,6 +31,7 @@ describe('AuthService', () => {
     jest.clearAllMocks();
     authTokenRepository.create.mockImplementation((token) => token);
     authTokenRepository.save.mockResolvedValue(undefined);
+    authTokenRepository.findOne.mockReset();
     user = {
       id: 'e49f25e7-b516-4cf3-a8d1-f7bf301c18d5',
       email: 'sales@example.com',
@@ -58,7 +60,7 @@ describe('AuthService', () => {
       .mockResolvedValueOnce('refresh-token');
 
     await expect(service.login({ email: user.email, password: 'correct-password' })).resolves.toEqual({
-      message: 'auth.login_successfully',
+      message: 'Login successful.',
       tokenPair: { accessToken: 'access-token', refreshToken: 'refresh-token' },
     });
 
@@ -66,11 +68,11 @@ describe('AuthService', () => {
     expect(jwtService.signAsync).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ sub: user.id, email: user.email, role: user.role }),
-      expect.objectContaining({ secret: 'access-test-secret', expiresIn: '15m' }),
+      expect.objectContaining({ secret: 'refresh-test-secret', expiresIn: '15m' }),
     );
     expect(jwtService.signAsync).toHaveBeenNthCalledWith(
       2,
-      { sub: user.id },
+      { sub: jwtService.signAsync.mock.calls[0][0].jti },
       expect.objectContaining({ secret: 'refresh-test-secret', expiresIn: '7d' }),
     );
   });
@@ -79,7 +81,7 @@ describe('AuthService', () => {
     userService.getUserSpecificField.mockResolvedValue(false);
 
     await expect(service.login({ email: 'missing@example.com', password: 'password' }))
-      .rejects.toThrow(new BadRequestException('auth.invalid_credentials'));
+      .rejects.toThrow(new BadRequestException('Invalid email or password.'));
     expect(jwtService.signAsync).not.toHaveBeenCalled();
   });
 
@@ -87,7 +89,41 @@ describe('AuthService', () => {
     userService.getUserSpecificField.mockResolvedValue(user);
 
     await expect(service.login({ email: user.email, password: 'wrong-password' }))
-      .rejects.toThrow(new BadRequestException('auth.invalid_credentials'));
+      .rejects.toThrow(new BadRequestException('Invalid email or password.'));
     expect(jwtService.signAsync).not.toHaveBeenCalled();
+  });
+
+  it('issues a new access token for a valid refresh token', async () => {
+    jwtService.verifyAsync.mockResolvedValue({ sub: 'refresh-jti' });
+    authTokenRepository.findOne.mockResolvedValue({ userId: user.id });
+    userService.findOne.mockResolvedValue(user);
+    jwtService.signAsync.mockResolvedValue('new-access-token');
+
+    await expect(service.refreshToken('refresh-token')).resolves.toEqual({
+      message: 'Access token refreshed successfully.',
+      accessToken: 'new-access-token',
+    });
+
+    expect(jwtService.verifyAsync).toHaveBeenCalledWith(
+      'refresh-token',
+      expect.objectContaining({
+        secret: 'refresh-test-secret',
+        algorithms: ['RS256'],
+      }),
+    );
+    expect(authTokenRepository.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ jti: 'refresh-jti', type: 'refresh' }),
+      }),
+    );
+  });
+
+  it('rejects an invalid or expired refresh token with a readable message', async () => {
+    jwtService.verifyAsync.mockRejectedValue(new Error('Token expired'));
+
+    await expect(service.refreshToken('expired-token'))
+      .rejects.toThrow(new UnauthorizedException('Invalid or expired refresh token.'));
+
+    expect(authTokenRepository.findOne).not.toHaveBeenCalled();
   });
 });

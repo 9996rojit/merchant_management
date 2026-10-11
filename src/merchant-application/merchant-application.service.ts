@@ -100,7 +100,8 @@ export class MerchantApplicationService {
     const app = await this.findOne(id);
     app.assignedReviewerId = reviewerId;
     app.status = ApplicationStatus.UNDER_REVIEW;
-    return this.merchantApplicationRepo.save(app);
+    await this.merchantApplicationRepo.save(app);
+    return this.findOne(id);
   }
 
   async makeDecision(id: string, decision: ApplicationDecision, reviewerId: string) {

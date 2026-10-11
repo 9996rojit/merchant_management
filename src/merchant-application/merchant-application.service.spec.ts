@@ -158,6 +158,11 @@ describe('MerchantApplicationService', () => {
     expect(application.assignedReviewerId).toBe('reviewer-user-id');
     expect(application.status).toBe(ApplicationStatus.UNDER_REVIEW);
     expect(repository.save).toHaveBeenCalledWith(application);
+    expect(queryBuilder.getOne).toHaveBeenCalledTimes(2);
+    expect(queryBuilder.getOne.mock.invocationCallOrder[0])
+      .toBeLessThan(repository.save.mock.invocationCallOrder[0]);
+    expect(repository.save.mock.invocationCallOrder[0])
+      .toBeLessThan(queryBuilder.getOne.mock.invocationCallOrder[1]);
   });
 
   it('rejects a decision from a reviewer who is not assigned', async () => {
