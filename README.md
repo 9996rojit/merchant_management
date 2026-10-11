@@ -1,187 +1,157 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Merchant Management API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS API for managing merchant applications, user access, reviewer
+assignments, and application decisions. New applications are queued for risk
+review, and the API provides Swagger documentation for trying endpoints.
 
-<p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requirements
 
-## Description
+- Node.js 22 or newer
+- pnpm
+- Docker and Docker Compose (for the database and Redis)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Local development
+## Configuration
 
 Install dependencies and create your local environment file:
 
 ```bash
-npm i
+pnpm install
+cp .env.example .env
 ```
 
-If `.env` does not exist, copy `.env.example` to `.env`. If it already exists,
-merge the example's required settings into it without overwriting your existing
-values.
+Update the values in `.env` for your environment. Generate separate
+base64-encoded secrets for the access and refresh tokens:
 
-Generate separate secrets for `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` with
-`openssl genrsa -out private.pem 2048` which creates private key and extract
-public key using
-`openssl rsa -in private.pem -outform PEM -pubout -out public.pem`, after
-generating both key use this command to get base64 of key
-`base64 -w 0 public.pem > public.txt` Need to do this for both key then once for
-public key and once for private key. After getting this two values you need to
-add it in `.env`. Do not use these development settings in production.
+```bash
+openssl genrsa -out private.pem 2048
+```
 
-Start PostgreSQL and Redis, then apply the database migration:
+```bash
+openssl rsa -in private.pem -outform PEM -pubout -out public.pem
+```
+
+```bash
+base64 -w 0 private.pem > private_base64.txt
+```
+
+```bash
+base64 -w 0 public.pem > public_base64.txt
+```
+
+Run the command twice and set the results as `JWT_ACCESS_SECRET` and
+`JWT_REFRESH_SECRET`. Don’t use the example values in production.
+
+When running the API directly on your machine, the example settings connect to
+PostgreSQL at `localhost:5433` and Redis at `127.0.0.1:6379`.
+
+## Run locally
+
+Start the database and Redis:
 
 ```bash
 docker compose up -d postgres redis
-npm run migration:run
-npm run seed
 ```
 
-Start the application:
+Apply database migrations, then start the API in watch mode:
 
 ```bash
-npm run start:dev
+pnpm run migration:run
+pnpm run start:dev
 ```
 
-The seed command adds these development users if they do not already exist. It
-can be rerun safely and requires `NODE_ENV=development`:
+In development, seed the database with the sample users:
 
-| Role     | Email                    | Password       |
-| -------- | ------------------------ | -------------- |
-| Admin    | `admin@merchants.com`    | `Password123!` |
-| Reviewer | `reviewer@merchants.com` | `Password123!` |
-| Sales    | `sales1@merchants.com`   | `Password123!` |
-| Sales    | `sales2@merchants.com`   | `Password123!` |
+```bash
+pnpm run seed
+```
 
-Swagger UI is available at `http://localhost:3000/api/docs`.
+The seed command can be run again safely. Sample accounts all use
+`Password123!`:
 
-Generate a migration after entity changes with `npm run migration:generate`,
-then apply it with `npm run migration:run`. The PostgreSQL container maps to
-host port `5433` to avoid conflicting with other local databases.
+| Role     | Email                    |
+| -------- | ------------------------ |
+| Admin    | `admin@merchants.com`    |
+| Reviewer | `reviewer@merchants.com` |
+| Sales    | `sales1@merchants.com`   |
+| Sales    | `sales2@merchants.com`   |
+
+These accounts are for local developement only. Do not use them in a deployed
+environment.
+
+## Run with Docker Compose
+
+Make sure `.env` exists and contains the required database and token settings.
+Compose supplies the API container with the internal service names for
+PostgreSQL and Redis.
+
+Build and start the API with its dependencies:
+
+```bash
+docker compose up --build merchant-api
+```
+
+The API listens on port `3000` by default. Change `PORT` in `.env` to use a
+different host port. Before the first run, apply migrations from your local
+machine while the Compose database is running:
+
+```bash
+docker compose up -d postgres redis
+pnpm run migration:run
+```
+
+Stop the services with `Ctrl+C`, or run `docker compose down` in another
+terminal.
+
+## API
+
+Swagger UI is available at
+[http://localhost:3000/api/docs](http://localhost:3000/api/docs). Log in at
+`POST /auth/login` to receive access and refresh tokens. Use the access token as
+a bearer token for protected endpoints. `POST /auth/refresh` returns a new
+access token.
+
+Main endpoint groups:
+
+- `/auth` — login and refresh tokens
+- `/merchant-application` — submit, list, view, update, assign, and decide on
+  merchant applications
+- `/user` — create and manage users
+- `/audit` — create audit log entries
+
+Access to application operations is role-based. Sales users can work with their
+own applications, while reviewers and administrators have additional review and
+decision capabilities.
+
+## Migrations
+
+After changing an entity’s database schema, generate a migration with a
+descriptive path:
+
+```bash
+pnpm run migration:generate src/database/migrations/AddMerchantField
+pnpm run migration:run
+```
+
+To check migration status or undo the latest migration:
+
+```bash
+pnpm run migration:show
+pnpm run migration:revert
+```
+
+Changes to TypeORM query settings that do not affect the database schema (for
+example, whether a column is selected by default) do not require a migration.
 
 ## Tests
 
 ```bash
-npm run test
-npm run test:e2e
+pnpm test
+pnpm run test:e2e
+pnpm run test:cov
 ```
 
-## Run tests
+## Project notes
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are
-some key steps you can take to ensure it runs as efficiently as possible. Check
-out the [deployment documentation](https://docs.nestjs.com/deployment) for more
-information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application,
-check out [Mau](https://mau.nestjs.com), our official platform for deploying
-NestJS applications on AWS. Mau makes deployment straightforward and fast,
-requiring just a few simple steps:
-
-```bash
-$ npm i -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to
-focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how
-your system behaves, detecting issues early, and maintaining reliable
-performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your
-NestJS application, giving you deep visibility into your system with minimal
-setup:
-
-- **Distributed tracing:** Follow requests across services and understand how
-  they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow
-  operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and
-  quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand
-  system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to
-  make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes
-  with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your
-  application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance
-  degradation, SLA violations, and other anomalies so your team can react
-  quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about
-  the framework.
-- For questions and support, please visit our
-  [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video
-  [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of
-  [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with
-  [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics,
-  and logging made easy. Error tracking and performance monitoring for your
-  NestJS applications.
-- Visualize your application graph and interact with the NestJS application in
-  real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official
-  [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on
-  [X](https://x.com/nestframework) and
-  [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official
-  [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors
-and support by the amazing backers. If you'd like to join them, please
-[read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+The API is built with NestJS, TypeORM, PostgreSQL, Redis, and BullMQ. For more
+information about the framework, see the
+[NestJS documantation](https://docs.nestjs.com).
