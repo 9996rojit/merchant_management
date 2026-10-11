@@ -2,6 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MerchantApplication } from '../../merchant-application/entities/merchant-application.entity';
+import { UserRole } from '@app/lib';
 
 @Injectable()
 export class SalesOwnerGuard implements CanActivate {
@@ -15,7 +16,7 @@ export class SalesOwnerGuard implements CanActivate {
         const user = request.user;
         const applicationId = request.params.id;
 
-        if (user.role === 'ADMIN' || user.role === 'REVIEWER') {
+        if (user.role === UserRole.ADMIN || user.role === UserRole.REVIEWER) {
             return true;
         }
 
